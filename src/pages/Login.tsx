@@ -16,9 +16,10 @@ export default function Login() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulated auth
+    // Simulated auth - in a real app, we'd fetch the name from a DB
     if (email && password) {
-      login("simulated-jwt-token");
+      const name = email.split('@')[0]; // Fallback name from email
+      login("simulated-jwt-token", { name: name.charAt(0).toUpperCase() + name.slice(1), email });
       toast({ title: "Welcome back!", description: "Accessing Finverse OS..." });
       navigate("/");
     }

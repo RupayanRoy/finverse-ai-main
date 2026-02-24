@@ -18,8 +18,9 @@ export default function Register() {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && email && password) {
-      login("simulated-jwt-token");
-      toast({ title: "Node Registered", description: "Your financial twin is being generated." });
+      // Pass actual name and email to login
+      login("simulated-jwt-token", { name, email });
+      toast({ title: "Node Registered", description: `Welcome, ${name}!` });
       navigate("/");
     }
   };

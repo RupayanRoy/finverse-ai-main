@@ -8,7 +8,7 @@ interface UserProfile {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: UserProfile | null;
-  login: (token: string) => void;
+  login: (token: string, profile: UserProfile) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -22,21 +22,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const token = localStorage.getItem('finverse_token');
-    if (token) {
+    const savedUser = localStorage.getItem('finverse_user');
+    
+    if (token && savedUser) {
       setIsAuthenticated(true);
-      setUser({ name: "Alex Rivera", email: "alex.rivera@finverse.io" });
+      setUser(JSON.parse(savedUser));
     }
     setLoading(false);
   }, []);
 
-  const login = (token: string) => {
+  const login = (token: string, profile: UserProfile) => {
     localStorage.setItem('finverse_token', token);
+    localStorage.setItem('finverse_user', JSON.stringify(profile));
     setIsAuthenticated(true);
-    setUser({ name: "Alex Rivera", email: "alex.rivera@finverse.io" });
+    setUser(profile);
   };
 
   const logout = () => {
     localStorage.removeItem('finverse_token');
+    localStorage.removeItem('finverse_user');
     setIsAuthenticated(false);
     setUser(null);
   };
