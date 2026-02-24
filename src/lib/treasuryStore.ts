@@ -1,7 +1,6 @@
 /**
  * Virtual Treasury Store
- * Simulates a backend database using localStorage so User and Admin 
- * portals can communicate without a separate Node.js process.
+ * Simulates a backend database using localStorage.
  */
 
 export interface Transaction {
@@ -20,7 +19,10 @@ export interface LoanRequest {
   purpose: string;
   income: number;
   tenure: number;
+  interestRate: number;
+  emi: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  processed: boolean; // Flag to ensure user state only updates once
   timestamp: string;
 }
 
@@ -28,7 +30,6 @@ const LEDGER_KEY = 'finverse_ledger';
 const LOANS_KEY = 'finverse_loans';
 
 export const treasuryStore = {
-  // Ledger Methods
   getLedger: (): Transaction[] => {
     const data = localStorage.getItem(LEDGER_KEY);
     return data ? JSON.parse(data) : [];
@@ -45,18 +46,18 @@ export const treasuryStore = {
     return newTx;
   },
 
-  // Loan Methods
   getLoans: (): LoanRequest[] => {
     const data = localStorage.getItem(LOANS_KEY);
     return data ? JSON.parse(data) : [];
   },
 
-  applyForLoan: (loan: Omit<LoanRequest, 'id' | 'status' | 'timestamp'>) => {
+  applyForLoan: (loan: Omit<LoanRequest, 'id' | 'status' | 'timestamp' | 'processed'>) => {
     const loans = treasuryStore.getLoans();
     const newLoan: LoanRequest = {
       ...loan,
       id: `LOAN-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
       status: 'PENDING',
+      processed: false,
       timestamp: new Date().toLocaleString(),
     };
     localStorage.setItem(LOANS_KEY, JSON.stringify([newLoan, ...loans]));
@@ -68,5 +69,11 @@ export const treasuryStore = {
     const updated = loans.map(l => l.id === id ? { ...l, status } : l);
     localStorage.setItem(LOANS_KEY, JSON.stringify(updated));
     return updated.find(l => l.id === id);
+  },
+
+  markLoanAsProcessed: (id: string) => {
+    const loans = treasuryStore.getLoans();
+    const updated = loans.map(l => l.id === id ? { ...l, processed: true } : l);
+    localStorage.setItem(LOANS_KEY, JSON.stringify(updated));
   }
 };

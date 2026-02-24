@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard'; 
-import { Cpu, Activity, ShieldCheck, Landmark, User, Check, X, Clock, LogOut } from "lucide-react";
+import { Cpu, Activity, ShieldCheck, Landmark, User, Check, X, Clock, LogOut, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,14 +33,12 @@ export default function AdminTreasury() {
 
   useEffect(() => {
     refreshData();
-    // Poll for changes every 2 seconds to simulate real-time updates
     const interval = setInterval(refreshData, 2000);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="p-8 bg-[#02040a] min-h-screen text-slate-200 font-sans">
-      {/* Header Section */}
       <div className="flex justify-between items-end mb-12 border-b border-white/5 pb-8">
         <div>
           <h1 className="text-4xl font-black tracking-tighter uppercase italic text-white">Treasury Ops</h1>
@@ -62,7 +60,6 @@ export default function AdminTreasury() {
         </div>
       </div>
 
-      {/* Top Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <GlassCard className="p-6 border-t-2 border-blue-500/50 text-center">
           <Cpu className="w-5 h-5 text-blue-500 mb-4 mx-auto" />
@@ -155,16 +152,16 @@ export default function AdminTreasury() {
                             <p className="text-sm font-bold text-emerald-400 font-mono">₹{loan.amount.toLocaleString()}</p>
                           </div>
                           <div>
-                            <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Purpose</p>
-                            <p className="text-sm font-bold text-blue-400">{loan.purpose}</p>
+                            <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Interest</p>
+                            <p className="text-sm font-bold text-amber-400 font-mono">{loan.interestRate}%</p>
                           </div>
                           <div>
-                            <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Income</p>
-                            <p className="text-sm font-bold text-white font-mono">₹{loan.income.toLocaleString()}/mo</p>
+                            <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Monthly EMI</p>
+                            <p className="text-sm font-bold text-primary font-mono">₹{loan.emi.toLocaleString()}</p>
                           </div>
                           <div>
                             <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Tenure</p>
-                            <p className="text-sm font-bold text-white">{loan.tenure} Months</p>
+                            <p className="text-sm font-bold text-white">{loan.tenure} Mo</p>
                           </div>
                         </div>
                       </div>

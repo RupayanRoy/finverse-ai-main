@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle, Loader2, FileCheck, Landmark, ShieldCheck, Send, Info } from "lucide-react";
+import { CheckCircle, Loader2, FileCheck, Landmark, ShieldCheck, Send, Info, Percent } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
 import { useAuth } from "@/context/AuthContext";
 import { treasuryStore } from "@/lib/treasuryStore";
+import { calculateEMI } from "@/lib/financialEngines";
 
 interface ActionModalProps {
   open: boolean;
@@ -24,7 +25,6 @@ export function QuickTransferModal({ open, onOpenChange }: ActionModalProps) {
 
   const handleSend = async () => {
     setLoading(true);
-    // Simulate network delay
     await new Promise(r => setTimeout(r, 800));
     
     const traceId = `TX-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
@@ -85,17 +85,27 @@ export function LoanApplicationModal({ open, onOpenChange }: ActionModalProps) {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
-    amount: "",
+    amount: "50000",
     purpose: "Education",
-    income: "",
-    tenure: "12"
+    income: "25000",
+    tenure: "12",
+    interestRate: "9"
   });
+
+  const [calculatedEMI, setCalculatedEMI] = useState(0);
+
+  useEffect(() => {
+    const emi = calculateEMI(
+      parseFloat(formData.amount) || 0,
+      parseFloat(formData.interestRate) || 0,
+      parseInt(formData.tenure) || 1
+    );
+    setCalculatedEMI(Math.round(emi));
+  }, [formData.amount, formData.interestRate, formData.tenure]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    // Simulate network delay
     await new Promise(r => setTimeout(r, 1200));
 
     treasuryStore.applyForLoan({
@@ -104,7 +114,9 @@ export function LoanApplicationModal({ open, onOpenChange }: ActionModalProps) {
       amount: parseFloat(formData.amount),
       purpose: formData.purpose,
       income: parseFloat(formData.income),
-      tenure: parseInt(formData.tenure)
+      tenure: parseInt(formData.tenure),
+      interestRate: parseFloat(formData.interestRate),
+      emi: calculatedEMI
     });
 
     setSubmitted(true);
@@ -140,6 +152,24 @@ export function LoanApplicationModal({ open, onOpenChange }: ActionModalProps) {
                 />
               </div>
               <div className="space-y-2">
+                <Label className="text-[10px] uppercase tracking-widest text-gray-500">Interest Rate (%)</Label>
+                <div className="relative">
+                  <Input 
+                    type="number" 
+                    step="0.1"
+                    placeholder="9.0" 
+                    required 
+                    value={formData.interestRate}
+                    onChange={(e) => setFormData({...formData, interestRate: e.target.value})}
+                    className="bg-white/5 border-white/10 pr-8"
+                  />
+                  <Percent className="w-3 h-3 absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label className="text-[10px] uppercase tracking-widest text-gray-500">Monthly Income (₹)</Label>
                 <Input 
                   type="number" 
@@ -149,6 +179,20 @@ export function LoanApplicationModal({ open, onOpenChange }: ActionModalProps) {
                   onChange={(e) => setFormData({...formData, income: e.target.value})}
                   className="bg-white/5 border-white/10"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] uppercase tracking-widest text-gray-500">Tenure (Months)</Label>
+                <Select value={formData.tenure} onValueChange={(v) => setFormData({...formData, tenure: v})}>
+                  <SelectTrigger className="bg-white/5 border-white/10">
+                    <SelectValue placeholder="Select tenure" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0a0c10] border-white/10 text-white">
+                    <SelectItem value="6">6 Months</SelectItem>
+                    <SelectItem value="12">12 Months</SelectItem>
+                    <SelectItem value="24">24 Months</SelectItem>
+                    <SelectItem value="36">36 Months</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -167,25 +211,15 @@ export function LoanApplicationModal({ open, onOpenChange }: ActionModalProps) {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase tracking-widest text-gray-500">Tenure (Months)</Label>
-              <Select value={formData.tenure} onValueChange={(v) => setFormData({...formData, tenure: v})}>
-                <SelectTrigger className="bg-white/5 border-white/10">
-                  <SelectValue placeholder="Select tenure" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#0a0c10] border-white/10 text-white">
-                  <SelectItem value="6">6 Months</SelectItem>
-                  <SelectItem value="12">12 Months</SelectItem>
-                  <SelectItem value="24">24 Months</SelectItem>
-                  <SelectItem value="36">36 Months</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex flex-col items-center">
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Estimated Monthly EMI</p>
+              <h2 className="text-2xl font-black italic text-primary">₹{calculatedEMI.toLocaleString()}</h2>
             </div>
 
             <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/10 flex gap-3">
               <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
               <p className="text-[10px] text-blue-300/70 leading-relaxed">
-                By submitting, you authorize the Treasury to perform a behavioral credit audit on your node.
+                Approval will increase your monthly expenses by ₹{calculatedEMI.toLocaleString()}.
               </p>
             </div>
 
