@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 interface UserProfile {
   name: string;
   email: string;
+  role: 'user' | 'admin';
 }
 
 interface AuthContextType {

@@ -4,7 +4,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Zap, ShieldCheck } from "lucide-react";
+import { Zap, ShieldCheck, Info } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
@@ -16,10 +16,19 @@ export default function Login() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulated auth - in a real app, we'd fetch the name from a DB
+    
+    // Admin Credentials Check
+    if (email === "admin@finverse.io" && password === "admin") {
+      login("admin-jwt-token", { name: "Treasury Admin", email, role: 'admin' });
+      toast({ title: "Admin Access Granted", description: "Opening Treasury Operations..." });
+      navigate("/admin");
+      return;
+    }
+
+    // Regular User Simulated Auth
     if (email && password) {
-      const name = email.split('@')[0]; // Fallback name from email
-      login("simulated-jwt-token", { name: name.charAt(0).toUpperCase() + name.slice(1), email });
+      const name = email.split('@')[0];
+      login("user-jwt-token", { name: name.charAt(0).toUpperCase() + name.slice(1), email, role: 'user' });
       toast({ title: "Welcome back!", description: "Accessing Finverse OS..." });
       navigate("/");
     }
@@ -69,6 +78,15 @@ export default function Login() {
             INITIALIZE SESSION
           </Button>
         </form>
+
+        <div className="mt-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex gap-3">
+          <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+          <div className="text-[10px] text-blue-300/70 leading-relaxed">
+            <p className="font-bold uppercase mb-1">Admin Access:</p>
+            <p>Email: admin@finverse.io</p>
+            <p>Password: admin</p>
+          </div>
+        </div>
 
         <div className="mt-6 text-center">
           <p className="text-xs text-muted-foreground">
