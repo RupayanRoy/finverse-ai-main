@@ -4,41 +4,26 @@ import { Cpu, Activity, ShieldCheck, Landmark, User, Check, X, Clock } from "luc
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { treasuryStore, type Transaction, type LoanRequest } from "@/lib/treasuryStore";
 
 export default function AdminTreasury() {
-  const [ledger, setLedger] = useState<any[]>([]);
-  const [loans, setLoans] = useState<any[]>([]);
+  const [ledger, setLedger] = useState<Transaction[]>([]);
+  const [loans, setLoans] = useState<LoanRequest[]>([]);
 
-  const refreshData = async () => {
-    try {
-      const ledgerRes = await fetch("http://localhost:8001/api/treasury/ledger");
-      if (ledgerRes.ok) setLedger(await ledgerRes.json());
-
-      const loansRes = await fetch("http://localhost:8001/api/loans/all");
-      if (loansRes.ok) setLoans(await loansRes.json());
-    } catch (err) {
-      console.log("Searching for Treasury Node on Port 8001...");
-    }
+  const refreshData = () => {
+    setLedger(treasuryStore.getLedger());
+    setLoans(treasuryStore.getLoans());
   };
 
-  const updateLoanStatus = async (id: string, status: 'APPROVED' | 'REJECTED') => {
-    try {
-      const res = await fetch(`http://localhost:8001/api/loans/${id}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      if (res.ok) {
-        toast({ title: `Loan ${status}`, description: `Request ${id} has been processed.` });
-        refreshData();
-      }
-    } catch (err) {
-      toast({ title: "Error", description: "Failed to update loan status.", variant: "destructive" });
-    }
+  const updateLoanStatus = (id: string, status: 'APPROVED' | 'REJECTED') => {
+    treasuryStore.updateLoanStatus(id, status);
+    toast({ title: `Loan ${status}`, description: `Request ${id} has been processed.` });
+    refreshData();
   };
 
   useEffect(() => {
     refreshData();
+    // Poll for changes every 2 seconds to simulate real-time updates
     const interval = setInterval(refreshData, 2000);
     return () => clearInterval(interval);
   }, []);
@@ -49,7 +34,7 @@ export default function AdminTreasury() {
       <div className="flex justify-between items-end mb-12 border-b border-white/5 pb-8">
         <div>
           <h1 className="text-4xl font-black tracking-tighter uppercase italic text-white">Treasury Ops</h1>
-          <p className="text-blue-500 font-mono text-[10px] tracking-[0.3em] mt-2">PORT_8001_ACTIVE_RELAY</p>
+          <p className="text-blue-500 font-mono text-[10px] tracking-[0.3em] mt-2">VIRTUAL_RELAY_ACTIVE</p>
         </div>
         <div className="text-right font-mono text-[10px] text-slate-500">
           NODE_STATUS: <span className="text-emerald-400 font-bold text-xs uppercase tracking-widest">Online</span>
@@ -68,7 +53,7 @@ export default function AdminTreasury() {
           <Activity className="w-5 h-5 text-emerald-500 mb-4 mx-auto" />
           <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Total Volume Relay</p>
           <h2 className="text-3xl font-bold font-mono text-white">
-            ₹{(ledger || []).reduce((a, b) => a + (Number(b.amount) || 0), 0).toLocaleString()}
+            ₹{ledger.reduce((a, b) => a + b.amount, 0).toLocaleString()}
           </h2>
         </GlassCard>
 
@@ -100,7 +85,7 @@ export default function AdminTreasury() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {ledger.length > 0 ? (
-                  ledger.map((tx: any) => (
+                  ledger.map((tx) => (
                     <tr key={tx.trace_id} className="hover:bg-blue-500/5 transition-colors group border-b border-white/5">
                       <td className="p-4 font-mono text-blue-400 text-xs">{tx.trace_id}</td>
                       <td className="p-4">
@@ -111,14 +96,14 @@ export default function AdminTreasury() {
                       <td className="p-4 text-right text-emerald-400 font-mono text-xs font-bold">₹{tx.amount.toLocaleString()}</td>
                       <td className="p-4 text-right text-[10px] text-gray-500 font-mono italic">
                         <ShieldCheck className="w-3 h-3 inline mr-1 text-emerald-500/50" />
-                        {tx.energy_audit || "0.0024 J"} Verified
+                        {tx.energy_audit} Verified
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td colSpan={4} className="p-12 text-center text-slate-600 font-mono text-xs uppercase tracking-[0.3em]">
-                      Waiting for incoming signals on Port 8001...
+                      Waiting for incoming signals...
                     </td>
                   </tr>
                 )}
@@ -130,7 +115,7 @@ export default function AdminTreasury() {
         <TabsContent value="loans">
           <div className="grid grid-cols-1 gap-4">
             {loans.length > 0 ? (
-              loans.map((loan: any) => (
+              loans.map((loan) => (
                 <GlassCard key={loan.id} className="border-white/5 bg-white/[0.01] p-6">
                   <div className="flex flex-col md:flex-row justify-between gap-6">
                     <div className="flex gap-4">

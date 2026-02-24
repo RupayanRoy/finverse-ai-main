@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle, Loader2, FileCheck, Landmark, ShieldCheck, ArrowRight, Send, Info } from "lucide-react";
+import { CheckCircle, Loader2, FileCheck, Landmark, ShieldCheck, Send, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
 import { useAuth } from "@/context/AuthContext";
+import { treasuryStore } from "@/lib/treasuryStore";
 
 interface ActionModalProps {
   open: boolean;
@@ -23,29 +24,21 @@ export function QuickTransferModal({ open, onOpenChange }: ActionModalProps) {
 
   const handleSend = async () => {
     setLoading(true);
+    // Simulate network delay
+    await new Promise(r => setTimeout(r, 800));
+    
     const traceId = `TX-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+    
+    treasuryStore.addTransaction({
+      trace_id: traceId,
+      destination: selectedAccount.toUpperCase().replace(" ", "_"),
+      amount: parseFloat(amount),
+    });
 
-    try {
-      const response = await fetch("http://localhost:8001/api/treasury/relay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          trace_id: traceId,
-          destination: selectedAccount.toUpperCase().replace(" ", "_"),
-          amount: parseFloat(amount),
-        }),
-      });
-
-      if (!response.ok) throw new Error();
-      
-      updateSavings(-parseFloat(amount));
-      setSent(true);
-      toast({ title: "Relay Successful", description: `Trace ID: ${traceId}` });
-    } catch (error) {
-      toast({ title: "Failed", description: "Node Offline", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    updateSavings(-parseFloat(amount));
+    setSent(true);
+    setLoading(false);
+    toast({ title: "Relay Successful", description: `Trace ID: ${traceId}` });
   };
 
   return (
@@ -102,29 +95,21 @@ export function LoanApplicationModal({ open, onOpenChange }: ActionModalProps) {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      const response = await fetch("http://localhost:8001/api/loans/apply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userName: user?.name,
-          userEmail: user?.email,
-          amount: parseFloat(formData.amount),
-          purpose: formData.purpose,
-          income: parseFloat(formData.income),
-          tenure: parseInt(formData.tenure)
-        }),
-      });
+    // Simulate network delay
+    await new Promise(r => setTimeout(r, 1200));
 
-      if (!response.ok) throw new Error();
-      
-      setSubmitted(true);
-      toast({ title: "Application Sent", description: "Your loan request is being reviewed by the Treasury." });
-    } catch (error) {
-      toast({ title: "Submission Failed", description: "Treasury Node is offline.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    treasuryStore.applyForLoan({
+      userName: user?.name || "Anonymous",
+      userEmail: user?.email || "no-email",
+      amount: parseFloat(formData.amount),
+      purpose: formData.purpose,
+      income: parseFloat(formData.income),
+      tenure: parseInt(formData.tenure)
+    });
+
+    setSubmitted(true);
+    setLoading(false);
+    toast({ title: "Application Sent", description: "Your loan request is being reviewed by the Treasury." });
   };
 
   return (
