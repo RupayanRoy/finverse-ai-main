@@ -1,18 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard'; 
-import { Cpu, Activity, ShieldCheck, Landmark, User, Check, X, Clock } from "lucide-react";
+import { Cpu, Activity, ShieldCheck, Landmark, User, Check, X, Clock, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { treasuryStore, type Transaction, type LoanRequest } from "@/lib/treasuryStore";
+import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function AdminTreasury() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [ledger, setLedger] = useState<Transaction[]>([]);
   const [loans, setLoans] = useState<LoanRequest[]>([]);
 
   const refreshData = () => {
     setLedger(treasuryStore.getLedger());
     setLoans(treasuryStore.getLoans());
+  };
+
+  const handleLogout = () => {
+    logout();
+    toast({ title: "Session Terminated", description: "Admin node disconnected." });
+    navigate("/login");
   };
 
   const updateLoanStatus = (id: string, status: 'APPROVED' | 'REJECTED') => {
@@ -36,8 +46,19 @@ export default function AdminTreasury() {
           <h1 className="text-4xl font-black tracking-tighter uppercase italic text-white">Treasury Ops</h1>
           <p className="text-blue-500 font-mono text-[10px] tracking-[0.3em] mt-2">VIRTUAL_RELAY_ACTIVE</p>
         </div>
-        <div className="text-right font-mono text-[10px] text-slate-500">
-          NODE_STATUS: <span className="text-emerald-400 font-bold text-xs uppercase tracking-widest">Online</span>
+        <div className="flex flex-col items-end gap-4">
+          <div className="text-right font-mono text-[10px] text-slate-500">
+            NODE_STATUS: <span className="text-emerald-400 font-bold text-xs uppercase tracking-widest">Online</span>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleLogout}
+            className="border-rose-500/20 text-rose-500 hover:bg-rose-500/10 font-bold uppercase text-[10px] tracking-widest"
+          >
+            <LogOut className="w-3 h-3 mr-2" />
+            Logout Session
+          </Button>
         </div>
       </div>
 
