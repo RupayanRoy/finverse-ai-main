@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Bot, Landmark, TrendingUp, Receipt,
-  ShieldCheck, BrainCircuit, ChevronLeft, ChevronRight, Zap, Menu, X, LogOut
+  ShieldCheck, BrainCircuit, ChevronLeft, ChevronRight, Zap, Menu, X, LogOut, User
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useState } from "react";
@@ -19,16 +19,14 @@ const navItems = [
   { title: "Financial Twin", url: "/twin", icon: BrainCircuit },
 ];
 
-// Simple context for mobile menu toggle
 import { createContext, useContext } from "react";
 const MobileMenuContext = createContext<(() => void) | null>(null);
 export const useMobileMenu = () => useContext(MobileMenuContext);
 
-// Wrapper that provides context
 export function AppSidebarWrapper({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   return (
     <MobileMenuContext.Provider value={() => setMobileOpen(true)}>
@@ -50,7 +48,6 @@ export function AppSidebarWrapper({ children }: { children: React.ReactNode }) {
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 className="fixed top-0 left-0 w-[260px] h-screen flex flex-col border-r border-sidebar-border bg-sidebar z-50"
               >
-                {/* Logo */}
                 <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border shrink-0">
                   <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
                     <Zap className="w-5 h-5 text-primary" />
@@ -63,6 +60,7 @@ export function AppSidebarWrapper({ children }: { children: React.ReactNode }) {
                     <X className="w-5 h-5" />
                   </button>
                 </div>
+                
                 <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
                   {navItems.map((item) => (
                     <NavLink
@@ -80,15 +78,26 @@ export function AppSidebarWrapper({ children }: { children: React.ReactNode }) {
                       <span>{item.title}</span>
                     </NavLink>
                   ))}
-                  
+                </nav>
+
+                <div className="p-4 border-t border-sidebar-border space-y-4">
+                  <div className="flex items-center gap-3 px-2">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <User className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-bold text-foreground truncate">{user?.name}</span>
+                      <span className="text-[10px] text-muted-foreground truncate">{user?.email}</span>
+                    </div>
+                  </div>
                   <button
                     onClick={() => { logout(); setMobileOpen(false); }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-neon-rose hover:bg-destructive/10 mt-4"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-neon-rose hover:bg-destructive/10"
                   >
                     <LogOut className="w-5 h-5 shrink-0" />
                     <span>Logout Session</span>
                   </button>
-                </nav>
+                </div>
               </motion.aside>
             </>
           )}
@@ -102,7 +111,7 @@ export function AppSidebarWrapper({ children }: { children: React.ReactNode }) {
 
 function DesktopSidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   return (
     <motion.aside
@@ -123,6 +132,7 @@ function DesktopSidebar() {
           )}
         </AnimatePresence>
       </div>
+
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         {navItems.map((item) => (
           <NavLink
@@ -141,18 +151,34 @@ function DesktopSidebar() {
             </AnimatePresence>
           </NavLink>
         ))}
+      </nav>
 
+      <div className="p-4 border-t border-sidebar-border space-y-4">
+        <div className={cn("flex items-center gap-3 px-2", collapsed && "justify-center px-0")}>
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <User className="w-5 h-5 text-primary" />
+          </div>
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col min-w-0">
+                <span className="text-sm font-bold text-foreground truncate">{user?.name}</span>
+                <span className="text-[10px] text-muted-foreground truncate">{user?.email}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         <button
           onClick={() => logout()}
           className={cn(
-            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-neon-rose hover:bg-destructive/10 mt-4",
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-neon-rose hover:bg-destructive/10",
             collapsed && "justify-center px-0"
           )}
         >
           <LogOut className="w-5 h-5 shrink-0" />
           {!collapsed && <span>Logout</span>}
         </button>
-      </nav>
+      </div>
+
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="flex items-center justify-center h-12 border-t border-sidebar-border text-muted-foreground hover:text-foreground transition-colors"
