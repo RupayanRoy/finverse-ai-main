@@ -7,40 +7,33 @@ import { TrendingUp, TrendingDown, Wallet, PiggyBank, CreditCard, Target, FileTe
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { LoanApplicationModal, DocumentGeneratorModal, GrantSigningModal, QuickTransferModal } from "@/components/ActionModals";
-
-const userData = {
-  monthlyIncome: 50000,
-  monthlyExpenses: 28000,
-  totalDebt: 500000,
-  totalSavings: 120000,
-  investmentValue: 85000,
-  emiAmount: 10500,
-};
-
-const healthScore = calculateHealthScore(userData);
-const cashFlow = forecastCashFlow(50000, 28000, 5000, 12);
-
-const stats = [
-  { label: "Monthly Income", value: "₹50,000", icon: Wallet, trend: "+8%", up: true },
-  { label: "Monthly Expenses", value: "₹28,000", icon: CreditCard, trend: "-3%", up: false },
-  { label: "Total Savings", value: "₹1.2L", icon: PiggyBank, trend: "+12%", up: true },
-  { label: "Active Goals", value: "3", icon: Target, trend: "On Track", up: true },
-];
-
-const spendingData = [
-  { category: "Rent", amount: 10000 },
-  { category: "Food", amount: 6000 },
-  { category: "Transport", amount: 3000 },
-  { category: "Education", amount: 4000 },
-  { category: "Entertainment", amount: 2500 },
-  { category: "Other", amount: 2500 },
-];
+import { useUser } from "@/context/UserContext";
 
 export default function Dashboard() {
+  const { userData } = useUser();
   const [loanOpen, setLoanOpen] = useState(false);
   const [docOpen, setDocOpen] = useState(false);
   const [grantOpen, setGrantOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+
+  const healthScore = calculateHealthScore(userData);
+  const cashFlow = forecastCashFlow(userData.monthlyIncome, userData.monthlyExpenses, 5000, 12);
+
+  const stats = [
+    { label: "Monthly Income", value: `₹${userData.monthlyIncome.toLocaleString()}`, icon: Wallet, trend: "+8%", up: true },
+    { label: "Monthly Expenses", value: `₹${userData.monthlyExpenses.toLocaleString()}`, icon: CreditCard, trend: "-3%", up: false },
+    { label: "Total Savings", value: `₹${(userData.totalSavings / 1000).toFixed(1)}k`, icon: PiggyBank, trend: "+12%", up: true },
+    { label: "Active Goals", value: "3", icon: Target, trend: "On Track", up: true },
+  ];
+
+  const spendingData = [
+    { category: "Rent", amount: 10000 },
+    { category: "Food", amount: 6000 },
+    { category: "Transport", amount: 3000 },
+    { category: "Education", amount: 4000 },
+    { category: "Entertainment", amount: 2500 },
+    { category: "Other", amount: 2500 },
+  ];
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -63,7 +56,7 @@ export default function Dashboard() {
             <FileText className="w-4 h-4" /> Generate Docs
           </Button>
           <Button variant="success" size="sm" onClick={() => setGrantOpen(true)}>
-            <ArrowUpRight className="w-4 h-4" /> Sign Grants
+            <ArrowUpRight className="w-4 h-4" /> {userData.scholarshipClaimed ? "View Grants" : "Sign Grants"}
           </Button>
           <Button variant="outline" size="sm" onClick={() => setTransferOpen(true)}>
             <Send className="w-4 h-4" /> Transfer
@@ -95,8 +88,8 @@ export default function Dashboard() {
         <h3 className="text-sm font-semibold text-muted-foreground mb-3">Quick Actions</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[
-            { label: "Pay EMI", icon: CreditCard, desc: "₹10,500 due Mar 1", action: () => setTransferOpen(true) },
-            { label: "Claim Scholarship", icon: ArrowUpRight, desc: "3 grants eligible", action: () => setGrantOpen(true) },
+            { label: "Pay EMI", icon: CreditCard, desc: `₹${userData.emiAmount.toLocaleString()} due Mar 1`, action: () => setTransferOpen(true) },
+            { label: "Claim Scholarship", icon: ArrowUpRight, desc: userData.scholarshipClaimed ? "Claimed" : "3 grants eligible", action: () => setGrantOpen(true) },
             { label: "Download Report", icon: FileText, desc: "Monthly summary", action: () => setDocOpen(true) },
             { label: "Refinance Loan", icon: Landmark, desc: "Save ₹42k interest", action: () => setLoanOpen(true) },
           ].map((item) => (
@@ -153,44 +146,6 @@ export default function Dashboard() {
               <Area type="monotone" dataKey="expenses" stroke="hsl(258, 60%, 55%)" fill="url(#expenseGrad)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
-        </GlassCard>
-      </div>
-
-      {/* Bottom row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <GlassCard delay={0.5}>
-          <h3 className="text-sm font-semibold text-muted-foreground mb-4">Monthly Spending Breakdown</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={spendingData} layout="vertical">
-              <XAxis type="number" stroke="hsl(215, 20%, 55%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v / 1000}k`} />
-              <YAxis type="category" dataKey="category" stroke="hsl(215, 20%, 55%)" fontSize={11} tickLine={false} axisLine={false} width={80} />
-              <Tooltip contentStyle={{ backgroundColor: "hsl(222, 40%, 10%)", border: "1px solid hsl(222, 20%, 18%)", borderRadius: "8px", fontSize: "12px" }} />
-              <Bar dataKey="amount" fill="hsl(199, 89%, 48%)" radius={[0, 4, 4, 0]} barSize={16} />
-            </BarChart>
-          </ResponsiveContainer>
-        </GlassCard>
-
-        <GlassCard delay={0.6}>
-          <h3 className="text-sm font-semibold text-muted-foreground mb-4">AI Insights</h3>
-          <div className="space-y-3">
-            {[
-              { text: "Your savings rate (44%) is above the recommended 30% — excellent discipline.", color: "text-neon-emerald" },
-              { text: "EMI-to-income ratio at 21%. Consider accelerating loan prepayment.", color: "text-neon-amber" },
-              { text: "Investment portfolio growing at 14.2% CAGR — beating inflation.", color: "text-neon-emerald" },
-              { text: "Food expenses increased 12% this month. Consider meal planning.", color: "text-neon-rose" },
-            ].map((insight, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.8 + i * 0.1 }}
-                className="flex items-start gap-3 p-3 rounded-lg bg-muted/30"
-              >
-                <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${insight.color.replace('text-', 'bg-')}`} />
-                <p className="text-sm text-foreground/80">{insight.text}</p>
-              </motion.div>
-            ))}
-          </div>
         </GlassCard>
       </div>
     </div>
