@@ -1,12 +1,13 @@
 import {
   LayoutDashboard, Bot, Landmark, TrendingUp, Receipt,
-  ShieldCheck, BrainCircuit, ChevronLeft, ChevronRight, Zap, Menu, X,
+  ShieldCheck, BrainCircuit, ChevronLeft, ChevronRight, Zap, Menu, X, LogOut
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
   { title: "Overview", url: "/", icon: LayoutDashboard },
@@ -18,112 +19,6 @@ const navItems = [
   { title: "Financial Twin", url: "/twin", icon: BrainCircuit },
 ];
 
-export function AppSidebar() {
-  const isMobile = useIsMobile();
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  const sidebarWidth = isMobile ? 260 : (collapsed ? 72 : 260);
-
-  const sidebarContent = (
-    <>
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border shrink-0">
-        <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
-          <Zap className="w-5 h-5 text-primary" />
-        </div>
-        {(isMobile || !collapsed) && (
-          <div className="flex flex-col">
-            <span className="font-bold text-foreground text-sm tracking-wide">FINVERSE</span>
-            <span className="text-[10px] text-muted-foreground tracking-widest">OPERATING SYSTEM</span>
-          </div>
-        )}
-        {isMobile && (
-          <button onClick={() => setMobileOpen(false)} className="ml-auto text-muted-foreground hover:text-foreground">
-            <X className="w-5 h-5" />
-          </button>
-        )}
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.url}
-            to={item.url}
-            end={item.url === "/"}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-              "text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent"
-            )}
-            activeClassName="bg-primary/10 text-primary border border-primary/20"
-            onClick={() => isMobile && setMobileOpen(false)}
-          >
-            <item.icon className="w-5 h-5 shrink-0" />
-            {(isMobile || !collapsed) && <span>{item.title}</span>}
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* Collapse toggle - desktop only */}
-      {!isMobile && (
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center justify-center h-12 border-t border-sidebar-border text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
-      )}
-    </>
-  );
-
-  // Mobile: overlay sidebar
-  if (isMobile) {
-    return (
-      <>
-        {/* Mobile hamburger - rendered in Layout header */}
-        <AnimatePresence>
-          {mobileOpen && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 z-40"
-                onClick={() => setMobileOpen(false)}
-              />
-              <motion.aside
-                initial={{ x: -260 }}
-                animate={{ x: 0 }}
-                exit={{ x: -260 }}
-                transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="fixed top-0 left-0 w-[260px] h-screen flex flex-col border-r border-sidebar-border bg-sidebar z-50"
-              >
-                {sidebarContent}
-              </motion.aside>
-            </>
-          )}
-        </AnimatePresence>
-        {/* Expose toggle */}
-        <MobileMenuContext.Provider value={() => setMobileOpen(true)}>
-          <div data-mobile-menu-toggle style={{ display: "none" }} />
-        </MobileMenuContext.Provider>
-      </>
-    );
-  }
-
-  // Desktop
-  return (
-    <motion.aside
-      animate={{ width: sidebarWidth }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="h-screen sticky top-0 flex flex-col border-r border-sidebar-border bg-sidebar overflow-hidden z-30 shrink-0"
-    >
-      {sidebarContent}
-    </motion.aside>
-  );
-}
-
 // Simple context for mobile menu toggle
 import { createContext, useContext } from "react";
 const MobileMenuContext = createContext<(() => void) | null>(null);
@@ -133,6 +28,7 @@ export const useMobileMenu = () => useContext(MobileMenuContext);
 export function AppSidebarWrapper({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { logout } = useAuth();
 
   return (
     <MobileMenuContext.Provider value={() => setMobileOpen(true)}>
@@ -184,6 +80,14 @@ export function AppSidebarWrapper({ children }: { children: React.ReactNode }) {
                       <span>{item.title}</span>
                     </NavLink>
                   ))}
+                  
+                  <button
+                    onClick={() => { logout(); setMobileOpen(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-neon-rose hover:bg-destructive/10 mt-4"
+                  >
+                    <LogOut className="w-5 h-5 shrink-0" />
+                    <span>Logout Session</span>
+                  </button>
                 </nav>
               </motion.aside>
             </>
@@ -198,6 +102,7 @@ export function AppSidebarWrapper({ children }: { children: React.ReactNode }) {
 
 function DesktopSidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const { logout } = useAuth();
 
   return (
     <motion.aside
@@ -236,6 +141,17 @@ function DesktopSidebar() {
             </AnimatePresence>
           </NavLink>
         ))}
+
+        <button
+          onClick={() => logout()}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-neon-rose hover:bg-destructive/10 mt-4",
+            collapsed && "justify-center px-0"
+          )}
+        >
+          <LogOut className="w-5 h-5 shrink-0" />
+          {!collapsed && <span>Logout</span>}
+        </button>
       </nav>
       <button
         onClick={() => setCollapsed(!collapsed)}
