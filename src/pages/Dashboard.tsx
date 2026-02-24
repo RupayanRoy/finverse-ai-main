@@ -2,7 +2,7 @@ import { useState } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { calculateHealthScore, forecastCashFlow } from "@/lib/financialEngines";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, CreditCard, Target, FileText, Landmark, ArrowUpRight, Send } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -17,22 +17,13 @@ export default function Dashboard() {
   const [transferOpen, setTransferOpen] = useState(false);
 
   const healthScore = calculateHealthScore(userData);
-  const cashFlow = forecastCashFlow(userData.monthlyIncome, userData.monthlyExpenses, 5000, 12);
+  const cashFlow = forecastCashFlow(userData.monthlyIncome || 0, userData.monthlyExpenses || 0, 5000, 12);
 
   const stats = [
-    { label: "Monthly Income", value: `₹${userData.monthlyIncome.toLocaleString()}`, icon: Wallet, trend: "+8%", up: true },
-    { label: "Monthly Expenses", value: `₹${userData.monthlyExpenses.toLocaleString()}`, icon: CreditCard, trend: "-3%", up: false },
-    { label: "Total Savings", value: `₹${(userData.totalSavings / 1000).toFixed(1)}k`, icon: PiggyBank, trend: "+12%", up: true },
+    { label: "Monthly Income", value: `₹${(userData.monthlyIncome || 0).toLocaleString()}`, icon: Wallet, trend: "+8%", up: true },
+    { label: "Monthly Expenses", value: `₹${(userData.monthlyExpenses || 0).toLocaleString()}`, icon: CreditCard, trend: "-3%", up: false },
+    { label: "Total Savings", value: `₹${((userData.totalSavings || 0) / 1000).toFixed(1)}k`, icon: PiggyBank, trend: "+12%", up: true },
     { label: "Active Goals", value: "3", icon: Target, trend: "On Track", up: true },
-  ];
-
-  const spendingData = [
-    { category: "Rent", amount: 10000 },
-    { category: "Food", amount: 6000 },
-    { category: "Transport", amount: 3000 },
-    { category: "Education", amount: 4000 },
-    { category: "Entertainment", amount: 2500 },
-    { category: "Other", amount: 2500 },
   ];
 
   return (
@@ -88,7 +79,7 @@ export default function Dashboard() {
         <h3 className="text-sm font-semibold text-muted-foreground mb-3">Quick Actions</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[
-            { label: "Pay EMI", icon: CreditCard, desc: `₹${userData.emiAmount.toLocaleString()} due Mar 1`, action: () => setTransferOpen(true) },
+            { label: "Pay EMI", icon: CreditCard, desc: `₹${(userData.emiAmount || 0).toLocaleString()} due Mar 1`, action: () => setTransferOpen(true) },
             { label: "Claim Scholarship", icon: ArrowUpRight, desc: userData.scholarshipClaimed ? "Claimed" : "3 grants eligible", action: () => setGrantOpen(true) },
             { label: "Download Report", icon: FileText, desc: "Monthly summary", action: () => setDocOpen(true) },
             { label: "Refinance Loan", icon: Landmark, desc: "Save ₹42k interest", action: () => setLoanOpen(true) },

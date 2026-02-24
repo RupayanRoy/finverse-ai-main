@@ -21,19 +21,37 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
+const DEFAULT_USER_DATA: UserData = {
+  monthlyIncome: 50000,
+  monthlyExpenses: 28000,
+  totalDebt: 500000,
+  totalSavings: 120000,
+  investmentValue: 85000,
+  emiAmount: 10500,
+  scholarshipClaimed: false,
+};
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
   const [userData, setUserData] = useState<UserData>(() => {
-    const saved = localStorage.getItem('finverse_user_data');
-    return saved ? JSON.parse(saved) : {
-      monthlyIncome: 50000,
-      monthlyExpenses: 28000,
-      totalDebt: 500000,
-      totalSavings: 120000,
-      investmentValue: 85000,
-      emiAmount: 10500,
-      scholarshipClaimed: false,
-    };
+    try {
+      const saved = localStorage.getItem('finverse_user_data');
+      if (!saved) return DEFAULT_USER_DATA;
+      
+      const parsed = JSON.parse(saved);
+      // Ensure no null values creep in from corrupted storage
+      return {
+        monthlyIncome: parsed.monthlyIncome ?? DEFAULT_USER_DATA.monthlyIncome,
+        monthlyExpenses: parsed.monthlyExpenses ?? DEFAULT_USER_DATA.monthlyExpenses,
+        totalDebt: parsed.totalDebt ?? DEFAULT_USER_DATA.totalDebt,
+        totalSavings: parsed.totalSavings ?? DEFAULT_USER_DATA.totalSavings,
+        investmentValue: parsed.investmentValue ?? DEFAULT_USER_DATA.investmentValue,
+        emiAmount: parsed.emiAmount ?? DEFAULT_USER_DATA.emiAmount,
+        scholarshipClaimed: !!parsed.scholarshipClaimed,
+      };
+    } catch (e) {
+      return DEFAULT_USER_DATA;
+    }
   });
 
   // Persist user data
@@ -56,17 +74,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (myApprovedLoan) {
         setUserData(prev => ({
           ...prev,
-          totalSavings: prev.totalSavings + myApprovedLoan.amount,
-          monthlyExpenses: prev.monthlyExpenses + myApprovedLoan.emi,
-          emiAmount: prev.emiAmount + myApprovedLoan.emi,
-          totalDebt: prev.totalDebt + myApprovedLoan.amount
+          totalSavings: (prev.totalSavings || 0) + (myApprovedLoan.amount || 0),
+          monthlyExpenses: (prev.monthlyExpenses || 0) + (myApprovedLoan.emi || 0),
+          emiAmount: (prev.emiAmount || 0) + (myApprovedLoan.emi || 0),
+          totalDebt: (prev.totalDebt || 0) + (myApprovedLoan.amount || 0)
         }));
 
         treasuryStore.markLoanAsProcessed(myApprovedLoan.id);
         
         toast({
           title: "Loan Disbursed!",
-          description: `₹${myApprovedLoan.amount.toLocaleString()} added to savings. Monthly expenses updated with EMI.`,
+          description: `₹${(myApprovedLoan.amount || 0).toLocaleString()} added to savings. Monthly expenses updated with EMI.`,
         });
       }
     };
@@ -80,7 +98,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     
     setUserData(prev => ({
       ...prev,
-      totalSavings: prev.totalSavings + amount,
+      totalSavings: (prev.totalSavings || 0) + amount,
       scholarshipClaimed: true
     }));
     
@@ -93,19 +111,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const updateSavings = (amount: number) => {
     setUserData(prev => ({
       ...prev,
-      totalSavings: prev.totalSavings + amount
+      totalSavings: (prev.totalSavings || 0) + amount
     }));
   };
 
   return (
-    <DialogContext.Provider value={{ userData, claimScholarship, updateSavings }}>
+    <UserContext.Provider value={{ userData, claimScholarship, updateSavings }}>
       {children}
-    </DialogContext.Provider>
+    </UserContext.Provider>
   );
 }
-
-// Fix for the context provider name mismatch in the original file
-const DialogContext = UserContext;
 
 export const useUser = () => {
   const context = useContext(UserContext);
