@@ -22,7 +22,7 @@ export interface LoanRequest {
   interestRate: number;
   emi: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  processed: boolean; // Flag to ensure user state only updates once
+  processed: boolean;
   timestamp: string;
 }
 
@@ -31,8 +31,12 @@ const LOANS_KEY = 'finverse_loans';
 
 export const treasuryStore = {
   getLedger: (): Transaction[] => {
-    const data = localStorage.getItem(LEDGER_KEY);
-    return data ? JSON.parse(data) : [];
+    try {
+      const data = localStorage.getItem(LEDGER_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
   },
 
   addTransaction: (tx: Omit<Transaction, 'energy_audit' | 'timestamp'>) => {
@@ -47,8 +51,12 @@ export const treasuryStore = {
   },
 
   getLoans: (): LoanRequest[] => {
-    const data = localStorage.getItem(LOANS_KEY);
-    return data ? JSON.parse(data) : [];
+    try {
+      const data = localStorage.getItem(LOANS_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
   },
 
   applyForLoan: (loan: Omit<LoanRequest, 'id' | 'status' | 'timestamp' | 'processed'>) => {
