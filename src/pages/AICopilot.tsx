@@ -3,8 +3,8 @@ import { GlassCard } from "@/components/GlassCard";
 import { motion } from "framer-motion";
 import { Send, Bot, User, Sparkles } from "lucide-react";
 import { PaymentAction } from "@/components/PaymentAction";
-import { SignaturePad } from "@/components/SignaturePad";
 import { LoanDocument } from "@/components/LoanDocument";
+import { LoanApplicationForm } from "@/components/LoanApplicationForm";
 
 interface Message {
   role: "user" | "assistant";
@@ -13,18 +13,9 @@ interface Message {
     amount: number;
     recipient: string;
   };
-  isSignatureRequest?: boolean;
+  showLoanForm?: boolean;
   generatedDoc?: any;
 }
-
-const LOAN_QUESTIONS = [
-  { key: "name", question: "I can help you with that! First, what is your full name?" },
-  { key: "amount", question: "How much money do you need to borrow? (Enter amount in ₹)" },
-  { key: "purpose", question: "What is the purpose of this loan? (e.g., Education, Project, Laptop)" },
-  { key: "income", question: "What is your monthly income or allowance?" },
-  { key: "tenure", question: "How many months would you like to repay this in?" },
-  { key: "signature", question: "Great. Finally, please provide your digital signature below to confirm the application." },
-];
 
 export default function AICopilot() {
   const [messages, setMessages] = useState<Message[]>([
@@ -35,11 +26,6 @@ export default function AICopilot() {
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [loanFlow, setLoanFlow] = useState<{ active: boolean; step: number; data: any }>({
-    active: false,
-    step: 0,
-    data: {},
-  });
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,29 +42,15 @@ export default function AICopilot() {
 
     await new Promise((r) => setTimeout(r, 1000));
 
-    // Handle Loan Flow
-    if (loanFlow.active) {
-      const currentKey = LOAN_QUESTIONS[loanFlow.step].key;
-      const newData = { ...loanFlow.data, [currentKey]: currentInput };
-      const nextStep = loanFlow.step + 1;
-
-      if (nextStep < LOAN_QUESTIONS.length) {
-        setLoanFlow({ ...loanFlow, step: nextStep, data: newData });
-        setMessages((prev) => [...prev, { 
-          role: "assistant", 
-          content: LOAN_QUESTIONS[nextStep].question,
-          isSignatureRequest: LOAN_QUESTIONS[nextStep].key === "signature"
-        }]);
-      }
-      setIsTyping(false);
-      return;
-    }
-
-    // Detect Loan Intent
     const lower = currentInput.toLowerCase();
+    
+    // Detect Loan Intent
     if (/(need|want|get|apply|borrow)\s+(money|loan|funds|grant|scholarship)/.test(lower)) {
-      setLoanFlow({ active: true, step: 0, data: {} });
-      setMessages((prev) => [...prev, { role: "assistant", content: LOAN_QUESTIONS[0].question }]);
+      setMessages((prev) => [...prev, { 
+        role: "assistant", 
+        content: "I can certainly help you with that. Please fill out the application details in the box below to get started.",
+        showLoanForm: true
+      }]);
       setIsTyping(false);
       return;
     }
@@ -100,14 +72,12 @@ export default function AICopilot() {
     setIsTyping(false);
   };
 
-  const handleSignature = (signatureDataUrl: string) => {
-    const finalData = { ...loanFlow.data, signature: signatureDataUrl };
+  const handleLoanSubmit = (data: any) => {
     setMessages((prev) => [...prev, { 
       role: "assistant", 
-      content: "Thank you. Your application has been generated. Here is your formal document:",
-      generatedDoc: finalData
+      content: "Thank you. Your application has been generated. Here is your formal document for review:",
+      generatedDoc: data
     }]);
-    setLoanFlow({ active: false, step: 0, data: {} });
   };
 
   function parsePaymentIntent(input: string) {
@@ -159,8 +129,8 @@ export default function AICopilot() {
                     onComplete={() => {}}
                   />
                 )}
-                {msg.isSignatureRequest && (
-                  <SignaturePad onSave={handleSignature} />
+                {msg.showLoanForm && (
+                  <LoanApplicationForm onSubmit={handleLoanSubmit} />
                 )}
                 {msg.generatedDoc && (
                   <LoanDocument data={msg.generatedDoc} />
@@ -191,7 +161,7 @@ export default function AICopilot() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder={loanFlow.active ? "Answer the question above..." : "Ask about loans, investments, or say 'Pay 500 to admin'..."}
+              placeholder="Ask about loans, investments, or say 'Pay 500 to admin'..."
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
             />
             <button
