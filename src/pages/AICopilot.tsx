@@ -49,43 +49,56 @@ export default function AICopilot() {
 
     const lower = currentInput.toLowerCase();
     
-    // Detect Loan Intent
-    if (/(need|want|get|apply|borrow)\s+(money|loan|funds|grant|scholarship)/.test(lower)) {
+    // 1. LOAN INTENT (Expanded variations)
+    const loanKeywords = ["need", "want", "get", "apply", "borrow", "request", "broke", "seeking", "require", "looking for"];
+    const loanObjects = ["money", "loan", "funds", "grant", "scholarship", "cash", "capital", "credit", "assistance", "aid"];
+    
+    const isLoanIntent = loanKeywords.some(k => lower.includes(k)) && 
+                       loanObjects.some(o => lower.includes(o));
+
+    if (isLoanIntent) {
       setMessages((prev) => [...prev, { 
         role: "assistant", 
-        content: "I can certainly help you with that. Please fill out the application details in the box below to get started.",
+        content: "I understand you're looking for financial assistance. I can help you prepare a formal application for the Treasury. Please provide the details below.",
         showLoanForm: true
       }]);
       setIsTyping(false);
       return;
     }
 
-    // Handle Payment Intent
+    // 2. PAYMENT INTENT (Expanded variations)
     const paymentIntent = parsePaymentIntent(currentInput);
     if (paymentIntent) {
       setMessages((prev) => [...prev, { 
         role: "assistant", 
-        content: `I've detected a request to transfer ₹${paymentIntent.amount} to ${paymentIntent.recipient}. Please authorize the transaction below using your secure code.`,
+        content: `I've detected a request to transfer ₹${paymentIntent.amount} to ${paymentIntent.recipient}. To proceed, please authorize the transaction using your secure code below.`,
         paymentAction: paymentIntent
       }]);
       setIsTyping(false);
       return;
     }
 
+    // 3. HELP/CAPABILITY INTENT
+    if (lower.includes("help") || lower.includes("what can you do") || lower.includes("how to use")) {
+      setMessages((prev) => [...prev, { 
+        role: "assistant", 
+        content: "I'm your financial command center! You can ask me to:\n\n• 'Apply for a loan' or 'I need some cash'\n• 'Pay 500 to admin' or 'Send 1000 to savings'\n• Analyze your debt or tax regime\n• Project your investment growth\n\nHow can I assist you right now?" 
+      }]);
+      setIsTyping(false);
+      return;
+    }
+
     // Default Responses
-    setMessages((prev) => [...prev, { role: "assistant", content: "I'm here to help! You can ask me about loans, investments, or even ask me to pay someone." }]);
+    setMessages((prev) => [...prev, { 
+      role: "assistant", 
+      content: "I'm not quite sure how to handle that specific request yet. Try asking me to 'apply for a loan' or 'pay 500 to admin'!" 
+    }]);
     setIsTyping(false);
   };
 
   const handleLoanSubmit = (data: any) => {
-    // 1. Calculate EMI for the store
-    const emi = calculateEMI(
-      parseFloat(data.amount) || 0,
-      9, // Default interest rate for AI applications
-      parseInt(data.tenure) || 12
-    );
+    const emi = calculateEMI(parseFloat(data.amount) || 0, 9, parseInt(data.tenure) || 12);
 
-    // 2. Save to Treasury Store for Admin review
     treasuryStore.applyForLoan({
       userName: data.name,
       userEmail: user?.email || "anonymous@finverse.io",
@@ -98,18 +111,8 @@ export default function AICopilot() {
       signature: data.signature
     });
 
-    // 3. Trigger Auto-Download (Simulated via Blob)
-    const docContent = `
-      FINVERSE TREASURY LOAN APPLICATION
-      ----------------------------------
-      Applicant: ${data.name}
-      Amount: ₹${data.amount}
-      Purpose: ${data.purpose}
-      Tenure: ${data.tenure} Months
-      EMI: ₹${Math.round(emi)}
-      Date: ${new Date().toLocaleDateString()}
-      Status: PENDING REVIEW
-    `;
+    // Auto-Download
+    const docContent = `FINVERSE TREASURY LOAN APPLICATION\n----------------------------------\nApplicant: ${data.name}\nAmount: ₹${data.amount}\nPurpose: ${data.purpose}\nTenure: ${data.tenure} Months\nEMI: ₹${Math.round(emi)}\nDate: ${new Date().toLocaleDateString()}\nStatus: PENDING REVIEW`;
     const blob = new Blob([docContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -120,32 +123,36 @@ export default function AICopilot() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    toast({ 
-      title: "Application Relayed", 
-      description: "Document downloaded and sent to Treasury Admin for review.",
-    });
+    toast({ title: "Application Relayed", description: "Document downloaded and sent to Treasury Admin." });
 
-    // 4. Update Chat
     setMessages((prev) => [...prev, { 
       role: "assistant", 
-      content: "Excellent. I've generated your formal application, initiated the download, and relayed the request to the Treasury Admin. You can review the document below while we wait for approval.",
+      content: "Application complete! I've generated your document, initiated the download, and sent the request to the Treasury Admin. You can review the summary below.",
       generatedDoc: data
     }]);
   };
 
   function parsePaymentIntent(input: string) {
     const lower = input.toLowerCase();
-    const amountMatch = lower.match(/(\d+)/);
-    if (!amountMatch) return null;
-    const amount = parseInt(amountMatch[1]);
-    const hasAction = /(pay|send|transfer|give|remit|wire|move|dispatch)/.test(lower);
-    if (!hasAction) return null;
-    let recipientMatch = lower.match(/(?:pay|send|transfer|give|remit|move|wire)\s+\d+\s+(?:to\s+)?([\w\s]+)/);
-    if (recipientMatch) {
-      const recipient = recipientMatch[1].trim().split(/\s+/)[0];
-      if (recipient) return { amount, recipient };
+    
+    // Match patterns like "pay 500 to admin", "send 100 to savings", "transfer 200 to john"
+    const paymentRegex = /(?:pay|send|transfer|give|remit|wire|move|dispatch|settle|remittance)\s+(\d+)\s+(?:to\s+)?([\w\s]+)/i;
+    const match = lower.match(paymentRegex);
+    
+    if (match) {
+      const amount = parseInt(match[1]);
+      const recipient = match[2].trim().split(/\s+/)[0]; // Take first word of recipient
+      return { amount, recipient };
     }
-    if (lower.includes("admin")) return { amount, recipient: "admin" };
+
+    // Fallback for "500 to admin" or "pay admin 500"
+    const amountMatch = lower.match(/(\d+)/);
+    if (amountMatch) {
+      const amount = parseInt(amountMatch[1]);
+      if (lower.includes("admin")) return { amount, recipient: "admin" };
+      if (lower.includes("savings")) return { amount, recipient: "savings" };
+    }
+
     return null;
   }
 
