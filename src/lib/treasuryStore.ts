@@ -24,6 +24,7 @@ export interface LoanRequest {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   processed: boolean;
   timestamp: string;
+  signature?: string; // Added signature field
 }
 
 const LEDGER_KEY = 'finverse_ledger';

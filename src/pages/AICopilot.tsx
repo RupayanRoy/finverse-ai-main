@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { motion } from "framer-motion";
-import { Send, Bot, User, Sparkles } from "lucide-react";
+import { Send, Bot, User, Sparkles, Download } from "lucide-react";
 import { PaymentAction } from "@/components/PaymentAction";
 import { LoanDocument } from "@/components/LoanDocument";
 import { LoanApplicationForm } from "@/components/LoanApplicationForm";
+import { treasuryStore } from "@/lib/treasuryStore";
+import { useAuth } from "@/context/AuthContext";
+import { calculateEMI } from "@/lib/financialEngines";
+import { toast } from "@/hooks/use-toast";
 
 interface Message {
   role: "user" | "assistant";
@@ -18,6 +22,7 @@ interface Message {
 }
 
 export default function AICopilot() {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -73,9 +78,57 @@ export default function AICopilot() {
   };
 
   const handleLoanSubmit = (data: any) => {
+    // 1. Calculate EMI for the store
+    const emi = calculateEMI(
+      parseFloat(data.amount) || 0,
+      9, // Default interest rate for AI applications
+      parseInt(data.tenure) || 12
+    );
+
+    // 2. Save to Treasury Store for Admin review
+    treasuryStore.applyForLoan({
+      userName: data.name,
+      userEmail: user?.email || "anonymous@finverse.io",
+      amount: parseFloat(data.amount),
+      purpose: data.purpose,
+      income: parseFloat(data.income),
+      tenure: parseInt(data.tenure),
+      interestRate: 9,
+      emi: Math.round(emi),
+      signature: data.signature
+    });
+
+    // 3. Trigger Auto-Download (Simulated via Blob)
+    const docContent = `
+      FINVERSE TREASURY LOAN APPLICATION
+      ----------------------------------
+      Applicant: ${data.name}
+      Amount: ₹${data.amount}
+      Purpose: ${data.purpose}
+      Tenure: ${data.tenure} Months
+      EMI: ₹${Math.round(emi)}
+      Date: ${new Date().toLocaleDateString()}
+      Status: PENDING REVIEW
+    `;
+    const blob = new Blob([docContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Loan_Application_${data.name.replace(/\s+/g, '_')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({ 
+      title: "Application Relayed", 
+      description: "Document downloaded and sent to Treasury Admin for review.",
+    });
+
+    // 4. Update Chat
     setMessages((prev) => [...prev, { 
       role: "assistant", 
-      content: "Thank you. Your application has been generated. Here is your formal document for review:",
+      content: "Excellent. I've generated your formal application, initiated the download, and relayed the request to the Treasury Admin. You can review the document below while we wait for approval.",
       generatedDoc: data
     }]);
   };
@@ -133,7 +186,17 @@ export default function AICopilot() {
                   <LoanApplicationForm onSubmit={handleLoanSubmit} />
                 )}
                 {msg.generatedDoc && (
-                  <LoanDocument data={msg.generatedDoc} />
+                  <div className="space-y-3">
+                    <LoanDocument data={msg.generatedDoc} />
+                    <div className="flex justify-end">
+                      <button 
+                        onClick={() => toast({ title: "Download Restarted", description: "Your application document is being re-downloaded." })}
+                        className="flex items-center gap-2 text-[10px] uppercase font-bold text-primary hover:underline"
+                      >
+                        <Download className="w-3 h-3" /> Re-download PDF
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
               {msg.role === "user" && (
