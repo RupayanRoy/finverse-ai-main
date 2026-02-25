@@ -2,10 +2,15 @@ import { useState, useRef, useEffect } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { motion } from "framer-motion";
 import { Send, Bot, User, Sparkles } from "lucide-react";
+import { PaymentAction } from "@/components/PaymentAction";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+  paymentAction?: {
+    amount: number;
+    recipient: string;
+  };
 }
 
 const INITIAL_MESSAGES: Message[] = [
@@ -23,12 +28,32 @@ const SAMPLE_RESPONSES: Record<string, string> = {
   default: "That's a great question! Based on your financial profile, here are some key insights:\n\n1. Your savings rate of 44% is excellent\n2. Debt-to-income ratio is manageable\n3. Consider diversifying investments\n\nWould you like me to dive deeper into any specific area — debt, investments, tax, or credit?",
 };
 
+function parsePaymentIntent(input: string) {
+  const lower = input.toLowerCase();
+  // Regex to match "pay [amount] to [recipient]" or "send [amount] to [recipient]"
+  const match = lower.match(/(?:pay|send|transfer)\s+(\d+)\s+(?:to\s+)?([\w\s]+)/);
+  
+  if (match) {
+    return {
+      amount: parseInt(match[1]),
+      recipient: match[2].trim()
+    };
+  }
+  return null;
+}
+
 function getResponse(input: string): string {
   const lower = input.toLowerCase();
   if (lower.includes("loan") || lower.includes("debt") || lower.includes("emi")) return SAMPLE_RESPONSES.loan;
   if (lower.includes("invest") || lower.includes("sip") || lower.includes("mutual")) return SAMPLE_RESPONSES.invest;
   if (lower.includes("tax") || lower.includes("regime") || lower.includes("80c")) return SAMPLE_RESPONSES.tax;
   if (lower.includes("credit") || lower.includes("score")) return SAMPLE_RESPONSES.credit;
+  
+  const payment = parsePaymentIntent(input);
+  if (payment) {
+    return `I've detected a request to transfer ₹${payment.amount} to ${payment.recipient}. Please authorize the transaction below using your secure code.`;
+  }
+
   return SAMPLE_RESPONSES.default;
 }
 
@@ -51,16 +76,23 @@ export default function AICopilot() {
 
     // Simulate typing delay
     await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1000));
+    
+    const paymentIntent = parsePaymentIntent(userMsg.content);
     const response = getResponse(userMsg.content);
-    setMessages((prev) => [...prev, { role: "assistant", content: response }]);
+    
+    setMessages((prev) => [...prev, { 
+      role: "assistant", 
+      content: response,
+      paymentAction: paymentIntent || undefined
+    }]);
     setIsTyping(false);
   };
 
   const quickPrompts = [
-    "Can I afford a ₹5L education loan?",
+    "Pay 500 to admin",
+    "Send 1000 to John",
     "How should I invest ₹5,000/month?",
     "Which tax regime is better for me?",
-    "What's my credit score?",
   ];
 
   return (
@@ -96,6 +128,15 @@ export default function AICopilot() {
                 }`}
               >
                 {msg.content}
+                {msg.paymentAction && (
+                  <PaymentAction 
+                    amount={msg.paymentAction.amount} 
+                    recipient={msg.paymentAction.recipient}
+                    onComplete={() => {
+                      // Optional: Add a follow-up message
+                    }}
+                  />
+                )}
               </div>
               {msg.role === "user" && (
                 <div className="w-8 h-8 rounded-lg bg-secondary/20 flex items-center justify-center shrink-0 mt-1">
@@ -110,7 +151,7 @@ export default function AICopilot() {
                 <Bot className="w-4 h-4 text-primary" />
               </div>
               <div className="bg-muted/30 rounded-xl px-4 py-3 text-sm text-muted-foreground">
-                <span className="animate-pulse">Analyzing your financials...</span>
+                <span className="animate-pulse">Analyzing your request...</span>
               </div>
             </div>
           )}
@@ -138,7 +179,7 @@ export default function AICopilot() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Ask about loans, investments, tax, or credit..."
+              placeholder="Ask about loans, investments, or say 'Pay 500 to admin'..."
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
             />
             <button
