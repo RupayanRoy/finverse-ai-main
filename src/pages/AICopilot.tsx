@@ -30,30 +30,51 @@ const SAMPLE_RESPONSES: Record<string, string> = {
 
 function parsePaymentIntent(input: string) {
   const lower = input.toLowerCase();
-  // Regex to match "pay [amount] to [recipient]" or "send [amount] to [recipient]"
-  const match = lower.match(/(?:pay|send|transfer)\s+(\d+)\s+(?:to\s+)?([\w\s]+)/);
   
-  if (match) {
-    return {
-      amount: parseInt(match[1]),
-      recipient: match[2].trim()
-    };
+  // Extract amount
+  const amountMatch = lower.match(/(\d+)/);
+  if (!amountMatch) return null;
+  const amount = parseInt(amountMatch[1]);
+
+  // Check for action verbs
+  const hasAction = /(pay|send|transfer|give|remit|wire|move|dispatch)/.test(lower);
+  if (!hasAction) return null;
+
+  // Try to find recipient
+  // Pattern 1: "pay [amount] to [recipient]" or "send [amount] to [recipient]"
+  let recipientMatch = lower.match(/(?:pay|send|transfer|give|remit|move|wire)\s+\d+\s+(?:to\s+)?([\w\s]+)/);
+  if (recipientMatch) {
+    const recipient = recipientMatch[1].trim().split(/\s+/)[0]; // Take first word of recipient
+    if (recipient) return { amount, recipient };
   }
+
+  // Pattern 2: "pay [recipient] [amount]"
+  recipientMatch = lower.match(/(?:pay|send|transfer|give|remit|move|wire)\s+([\w\s]+)\s+\d+/);
+  if (recipientMatch) {
+    const recipient = recipientMatch[1].trim().replace(/\s+to$/, "").split(/\s+/).pop(); // Take last word before amount
+    if (recipient) return { amount, recipient };
+  }
+
+  // Fallback: if "admin" is mentioned anywhere with an amount and action
+  if (lower.includes("admin")) return { amount, recipient: "admin" };
+
   return null;
 }
 
 function getResponse(input: string): string {
   const lower = input.toLowerCase();
-  if (lower.includes("loan") || lower.includes("debt") || lower.includes("emi")) return SAMPLE_RESPONSES.loan;
-  if (lower.includes("invest") || lower.includes("sip") || lower.includes("mutual")) return SAMPLE_RESPONSES.invest;
-  if (lower.includes("tax") || lower.includes("regime") || lower.includes("80c")) return SAMPLE_RESPONSES.tax;
-  if (lower.includes("credit") || lower.includes("score")) return SAMPLE_RESPONSES.credit;
   
+  // Check for payment intent first to give it priority
   const payment = parsePaymentIntent(input);
   if (payment) {
     return `I've detected a request to transfer ₹${payment.amount} to ${payment.recipient}. Please authorize the transaction below using your secure code.`;
   }
 
+  if (lower.includes("loan") || lower.includes("debt") || lower.includes("emi")) return SAMPLE_RESPONSES.loan;
+  if (lower.includes("invest") || lower.includes("sip") || lower.includes("mutual")) return SAMPLE_RESPONSES.invest;
+  if (lower.includes("tax") || lower.includes("regime") || lower.includes("80c")) return SAMPLE_RESPONSES.tax;
+  if (lower.includes("credit") || lower.includes("score")) return SAMPLE_RESPONSES.credit;
+  
   return SAMPLE_RESPONSES.default;
 }
 
