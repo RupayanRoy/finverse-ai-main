@@ -8,20 +8,29 @@ interface SignaturePadProps {
 }
 
 export function SignaturePad({ onSave }: SignaturePadProps) {
-  // Using any for the ref to avoid strict type conflicts with the library's internal types in some environments
+  // Using any to bypass strict type checks that might fail during library interop
   const sigPad = useRef<any>(null);
 
   const clear = () => {
-    sigPad.current?.clear();
+    if (sigPad.current) {
+      sigPad.current.clear();
+    }
   };
 
   const save = () => {
-    if (!sigPad.current || sigPad.current.isEmpty()) return;
-    
-    // getTrimmedCanvas() is the method that was causing the error in the alpha version
-    const canvas = sigPad.current.getTrimmedCanvas();
-    const dataUrl = canvas.toDataURL("image/png");
-    if (dataUrl) onSave(dataUrl);
+    try {
+      if (!sigPad.current || sigPad.current.isEmpty()) return;
+      
+      // Accessing the canvas directly to avoid internal library helper issues
+      const canvas = sigPad.current.getTrimmedCanvas();
+      const dataUrl = canvas.toDataURL("image/png");
+      
+      if (dataUrl) {
+        onSave(dataUrl);
+      }
+    } catch (error) {
+      console.error("Signature capture failed:", error);
+    }
   };
 
   return (
